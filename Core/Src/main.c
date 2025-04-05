@@ -88,7 +88,7 @@ volatile int presence = 0, isRxed = 0;
 uint8_t RxData[8], Temp_LSB = 0, Temp_MSB = 0;
 int16_t Temp = 0;
 float Temperature_DS18B20 = 0;
-uint8_t Tx_PRESENCE_PULSE = 0xF0, Rx_PRESENCE_PULSE = 0xFF;
+uint8_t Tx_PRESENCE_PULSE[] = 0xF0, Rx_PRESENCE_PULSE[] = 0x00;
 
 uint32_t delay = 0;
 DS18B20_state_t DS18B20_state = START_MEASURE;
@@ -214,7 +214,7 @@ void action(DS18B20_state_t state){
 			DS18B20_Write(0xCC);
 			break;
 		case REQUEST_TEMP:
-			DS18B20_Write(0x44);
+			DS18B20_Write(0xBE);
 			break;
 		case RECEIVING_BYTE_LSB:
 			DS18B20_Read();
@@ -229,6 +229,69 @@ void action(DS18B20_state_t state){
 		default:
 			break;
 	}
+}
+
+void DS18B20_state_handling(DS18B20_state_t *state){
+	switch(*state){
+		case PRESENCE_PULSE_1:
+			if(flag_uart6_sent == 1){
+				if(Rx_PRESENCE_PULSE[0] != 0xF0){
+					*state = SKIPPING_ROM1;
+				}
+				flag_uart6_sent = 0;
+			}
+			break;
+		case SKIPPING_ROM1:
+			if(flag_uart6_sent == 1){
+				*state = REQUESTING_CONVERSION;
+				flag_uart6_sent = 0;
+			}
+			break;
+		case REQUESTING_CONVERSION:
+			if(flag_uart6_sent == 1){
+				*state = PRESENCE_PULSE_2;
+				flag_uart6_sent = 0;
+				Rx_PRESENCE_PULSE[0] = 0xF0;
+			}
+			break;
+		case PRESENCE_PULSE_2:
+			if(flag_uart6_sent == 1){
+				if(Rx_PRESENCE_PULSE[0] != 0xF0){
+					*state = SKIPPING_ROM2;
+				}
+				flag_uart6_sent = 0;
+			}
+			break;
+		case SKIPPING_ROM2:
+			if(flag_uart6_sent == 1){
+				*state = REQUEST_TEMP;
+				flag_uart6_sent = 0;
+			}
+			break;
+		case REQUEST_TEMP:
+			if(flag_uart6_sent == 1){
+				*state = RECEIVING_BYTE_LSB;
+				flag_uart6_sent = 0;
+			}
+			break;
+		case RECEIVING_BYTE_LSB:
+			if(flag_uart6_sent == 1){
+				*state = RECEIVING_BYTE_MSB;
+				flag_uart6_sent = 0;
+			}
+			break;
+		case RECEIVING_BYTE_MSB:
+			if(flag_uart6_sent == 1){
+				*state = FINISHED;
+				flag_uart6_sent = 0;
+			}
+			break;
+		case FINISHED:
+			Rx_PRESENCE_PULSE[0] = 0xF0;
+			*state = PRESENCE_PULSE_1;
+		default:
+			break;
+		}
 }
 /* USER CODE END 0 */
 
