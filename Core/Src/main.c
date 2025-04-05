@@ -85,13 +85,14 @@ volatile bool flag_uart6_sent = 0, flag_uart6_received = 0;
 volatile bool flag_timer = 0;
 
 volatile int presence = 0, isRxed = 0;
-uint8_t RxData[8], Temp_LSB = 0, Temp_MSB = 0;
+uint8_t RxData[8], RxData_LSB[8], RxData_MSB[8], Temp_LSB = 0, Temp_MSB = 0;
 int16_t Temp = 0;
 float Temperature_DS18B20 = 0;
-uint8_t Tx_PRESENCE_PULSE[] = 0xF0, Rx_PRESENCE_PULSE[] = 0x00;
+uint8_t Tx_PRESENCE_PULSE[] = {0xF0}, Rx_PRESENCE_PULSE[] = {0x00};
+uint8_t data_global = 0xF0;
 
-uint32_t delay = 0;
-DS18B20_state_t DS18B20_state = START_MEASURE;
+uint32_t delay = 0, conversion_delay = 0;
+DS18B20_state_t DS18B20_state = START_MEASURE, *DS18B20_state_ptr = &DS18B20_state;
 
 void Start_Timer(uint16_t microseconds) {
     __HAL_TIM_SET_COUNTER(&htim4, 0);           // Reiniciar contador
@@ -122,6 +123,13 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void print_bin(uint8_t byte) {
+    for (int i = 7; i >= 0; i--) {
+        printf("%d", (byte >> i) & 1);
+    }
+    printf("\n");
+}
+
 void MX_USART6_UART_Init_baud_selecting(uint32_t baud_rate)
 {
 	huart6.Instance = USART6;
@@ -151,6 +159,18 @@ void DS18B20_Write(uint8_t data){
 	HAL_UART_Transmit(&huart6,buffer,8,1000);
 }
 
+void DS18B20_Write_noblock(uint8_t data){
+	uint8_t buffer[8];
+	for(int i = 0;i < 8;i++){
+		if((data & (1<<i)) != 0){
+			buffer[i] = 0xFF;
+		}
+		else{
+			buffer[i] = 0x00;
+		}
+	}
+	HAL_UART_Transmit_DMA(&huart6,buffer,8);
+}
 
 int DS18B20_Start(void){
 	uint8_t data = 0xF0;
@@ -165,6 +185,18 @@ int DS18B20_Start(void){
 	return 1;
 }
 
+void DS18B20_Start_noblock(void){
+	MX_USART6_UART_Init_baud_selecting(9600);
+	HAL_UART_Transmit_DMA(&huart6,Tx_PRESENCE_PULSE,1);
+	HAL_UART_Receive_DMA(&huart6,Rx_PRESENCE_PULSE,1);
+}
+
+bool DS18B20_Presence_Pulse_check(void){
+	if(Rx_PRESENCE_PULSE[0] == 0xF0){
+		return 0;
+	}
+	return 1;
+}
 
 uint8_t DS18B20_Read(void){
 	uint8_t buffer[8];
@@ -175,123 +207,190 @@ uint8_t DS18B20_Read(void){
 	HAL_UART_Transmit_DMA(&huart6,buffer,8);
 	HAL_UART_Receive_DMA(&huart6,RxData,8);
 
-	printf("Antes de isRxed %d\n", isRxed);
 	delay = HAL_GetTick();
 	while(isRxed == 0){
 		if((HAL_GetTick() - delay > 2500)){
 			delay = HAL_GetTick();
-			printf("Dentro de isRxed %d\n", isRxed);
+
 			isRxed = 1;
 		}
     };
-	printf("Despues de isRxed\n");
 
+	printf("RxData (dec): ");
 	for(int i = 0;i < 8;i++){
+		printf("%d ", RxData[i]);
 		if(RxData[i] == 0xFF){
 			value |= 1<<i;
 		}
 	}
+	printf("\n");
 
+	print_bin(value);
 	isRxed = 0;
+	return value;
+}
+
+void DS18B20_Read_noblock(uint8_t *rx){
+	uint8_t buffer[8];
+	for(int i = 0;i < 8;i++){
+		buffer[i] = 0xFF;
+	}
+	HAL_UART_Transmit_DMA(&huart6,buffer,8);
+	HAL_UART_Receive_DMA(&huart6,rx,8);
+}
+
+uint8_t byte_parser(uint8_t *data){
+	uint8_t value = 0;
+
+	for(int i = 0;i < 8;i++){
+		if(data[i] == 0xFF){
+			value |= 1<<i;
+		}
+	}
+
 	return value;
 }
 
 void action(DS18B20_state_t state){
 	switch(state){
 		case PRESENCE_PULSE_1:
-			DS18B20_Start();
+			DS18B20_Start_noblock();
 			break;
 		case SKIPPING_ROM1:
-			DS18B20_Write(0xCC);
+			MX_USART6_UART_Init_baud_selecting(115200);
+			DS18B20_Write_noblock(0xCC);
 			break;
 		case REQUESTING_CONVERSION:
-			DS18B20_Write(0x44);
+			DS18B20_Write_noblock(0x44);
+			delay = HAL_GetTick();
 			break;
 		case PRESENCE_PULSE_2:
-			DS18B20_Start();
+			DS18B20_Start_noblock();
 			break;
 		case SKIPPING_ROM2:
-			DS18B20_Write(0xCC);
+			MX_USART6_UART_Init_baud_selecting(115200);
+			DS18B20_Write_noblock(0xCC);
 			break;
 		case REQUEST_TEMP:
-			DS18B20_Write(0xBE);
+			DS18B20_Write_noblock(0xBE);
 			break;
 		case RECEIVING_BYTE_LSB:
-			DS18B20_Read();
+			DS18B20_Read_noblock(RxData_LSB);
 			break;
 		case RECEIVING_BYTE_MSB:
-			DS18B20_Read();
+			DS18B20_Read_noblock(RxData_MSB);
 			break;
 		case FINISHED:
+			Temp_LSB = byte_parser(RxData_LSB);
+			printf("RxData_LSB (dec): ");
+			for (int i = 0; i < 8; i++) {
+				printf("%d ", RxData_LSB[i]);
+			}
+			printf("\n");
+			print_bin(Temp_LSB);
+
+			Temp_MSB = byte_parser(RxData_MSB);
+			printf("RxData_MSB (dec): ");
+			for (int i = 0; i < 8; i++) {
+				printf("%d ", RxData_MSB[i]);
+			}
+			printf("\n");
+			print_bin(Temp_MSB);
+
 			Temp = (Temp_MSB << 8) | Temp_LSB;
 			Temperature_DS18B20 = (float) Temp/16.0;
+			printf("Temperatura medida %f\n",Temperature_DS18B20);
 			delay = HAL_GetTick();
 		default:
 			break;
 	}
 }
 
-void DS18B20_state_handling(DS18B20_state_t *state){
+bool DS18B20_state_handling(DS18B20_state_t *state){
 	switch(*state){
+		case START_MEASURE:
+			*state = PRESENCE_PULSE_1;
+			return 1;
+			break;
 		case PRESENCE_PULSE_1:
 			if(flag_uart6_sent == 1){
-				if(Rx_PRESENCE_PULSE[0] != 0xF0){
+				if(DS18B20_Presence_Pulse_check()){
 					*state = SKIPPING_ROM1;
 				}
+				printf("Rx_Presence_pulse = 0x%02X\n", Rx_PRESENCE_PULSE[0]);
 				flag_uart6_sent = 0;
+				return 1;
 			}
+			return 0;
 			break;
 		case SKIPPING_ROM1:
 			if(flag_uart6_sent == 1){
 				*state = REQUESTING_CONVERSION;
 				flag_uart6_sent = 0;
+				return 1;
 			}
+			return 0;
 			break;
 		case REQUESTING_CONVERSION:
 			if(flag_uart6_sent == 1){
 				*state = PRESENCE_PULSE_2;
 				flag_uart6_sent = 0;
 				Rx_PRESENCE_PULSE[0] = 0xF0;
+				return 1;
 			}
+			return 0;
 			break;
 		case PRESENCE_PULSE_2:
 			if(flag_uart6_sent == 1){
-				if(Rx_PRESENCE_PULSE[0] != 0xF0){
+				if(DS18B20_Presence_Pulse_check()){
 					*state = SKIPPING_ROM2;
 				}
+				printf("Rx_Presence_pulse = 0x%02X\n", Rx_PRESENCE_PULSE[0]);
 				flag_uart6_sent = 0;
+				return 1;
 			}
+			return 0;
 			break;
 		case SKIPPING_ROM2:
 			if(flag_uart6_sent == 1){
 				*state = REQUEST_TEMP;
 				flag_uart6_sent = 0;
+				return 1;
 			}
+			return 0;
 			break;
 		case REQUEST_TEMP:
 			if(flag_uart6_sent == 1){
 				*state = RECEIVING_BYTE_LSB;
 				flag_uart6_sent = 0;
+				return 1;
 			}
+			return 0;
 			break;
 		case RECEIVING_BYTE_LSB:
 			if(flag_uart6_sent == 1){
 				*state = RECEIVING_BYTE_MSB;
 				flag_uart6_sent = 0;
+				return 1;
 			}
+			return 0;
 			break;
 		case RECEIVING_BYTE_MSB:
 			if(flag_uart6_sent == 1){
 				*state = FINISHED;
 				flag_uart6_sent = 0;
+				return 1;
 			}
+			return 0;
 			break;
 		case FINISHED:
 			Rx_PRESENCE_PULSE[0] = 0xF0;
-			*state = PRESENCE_PULSE_1;
+			*state = START_MEASURE;
+			return 1;
 		default:
 			break;
 		}
+	return 0;
 }
 /* USER CODE END 0 */
 
@@ -347,14 +446,16 @@ int main(void)
     MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
-    /*if((HAL_GetTick() - delay > 2500)){
-    	//delay = HAL_GetTick();
-    	Read_DS18B20(current_ds18b20_state_ptr, delay_ptr);
-    }*/
+    if((HAL_GetTick() - delay > 3000)){
+    	if(DS18B20_state_handling(DS18B20_state_ptr)){
+    		action(DS18B20_state);
+    	}
+    }
+
+    /*
     presence = DS18B20_Start();
     DS18B20_Write(0xCC);
     DS18B20_Write(0x44);
-    HAL_Delay(800);
 
     presence = DS18B20_Start();
     DS18B20_Write(0xCC);
@@ -365,7 +466,7 @@ int main(void)
 
     Temp = (Temp_MSB<<8) | Temp_LSB;
     Temperature_DS18B20 = (float) Temp/16.0;
-    HAL_Delay(2000);
+    HAL_Delay(2000);*/
   }
   /* USER CODE END 3 */
 }

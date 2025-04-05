@@ -1,0 +1,90 @@
+SWV ITM Data Console - ITM Port: 0
+Rx_Presence_pulse = 0x00
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+RxData_LSB (dec): 255 255 255 255 255 11 0 8 
+00011111
+RxData_MSB (dec): 255 255 255 255 255 255 255 8 
+01111111
+Temperatura medida 2033.937500
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+RxData_LSB (dec): 255 255 255 255 248 255 255 248 
+01101111
+RxData_MSB (dec): 255 248 248 248 248 248 248 248 
+00000001
+Temperatura medida 22.937500
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+RxData_LSB (dec): 248 255 255 255 248 255 255 248 
+01101110
+RxData_MSB (dec): 255 248 248 248 248 248 248 248 
+00000001
+Temperatura medida 22.875000
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+RxData_LSB (dec): 248 255 255 255 248 255 255 248 
+01101110
+RxData_MSB (dec): 255 248 248 248 248 248 248 248 
+00000001
+Temperatura medida 22.875000
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+RxData_LSB (dec): 248 255 255 255 248 255 255 248 
+01101110
+RxData_MSB (dec): 255 248 248 248 248 248 248 248 
+00000001
+Temperatura medida 22.875000
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+RxData_LSB (dec): 255 248 255 255 248 255 255 248 
+01101101
+RxData_MSB (dec): 255 248 248 248 248 248 248 248 
+00000001
+Temperatura medida 22.812500
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+RxData_LSB (dec): 255 248 255 255 248 255 255 248 
+01101101
+RxData_MSB (dec): 255 248 248 248 248 248 248 248 
+00000001
+Temperatura medida 22.812500
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+RxData_LSB (dec): 255 248 255 255 248 255 255 248 
+01101101
+RxData_MSB (dec): 255 248 248 248 248 248 248 248 
+00000001
+Temperatura medida 22.812500
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+RxData_LSB (dec): 255 248 255 255 248 255 255 248 
+01101101
+RxData_MSB (dec): 255 248 248 248 248 248 248 248 
+00000001
+Temperatura medida 22.812500
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xE0
+RxData_LSB (dec): 255 248 255 255 248 255 255 248 
+01101101
+RxData_MSB (dec): 255 248 248 248 248 248 248 248 
+00000001
+Temperatura medida 22.812500

@@ -1,0 +1,19 @@
+SWV ITM Data Console - ITM Port: 0
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xF0
+RxData_LSB (dec): 255 255 255 248 248 3 0 32 
+RxData_MSB (dec): 248 248 248 8 112 0 0 0 
+00000111
+00000000
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xF0
+RxData_LSB (dec): 255 255 255 255 255 255 255 255 
+RxData_MSB (dec): 255 255 255 8 116 12 0 32 
+11111111
+00000111
+Rx_Presence_pulse = 0xF0
+Rx_Presence_pulse = 0xF0
+RxData_LSB (dec): 255 255 255 255 255 255 255 255 
+RxData_MSB (dec): 255 255 255 8 116 12 0 32 
+11111111
+00000111

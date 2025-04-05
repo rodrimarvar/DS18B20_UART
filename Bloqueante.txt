@@ -1,0 +1,49 @@
+SWV ITM Data Console - ITM Port: 0
+Rx_Presence_pulse = 0xC0
+Rx_Presence_pulse = 0x00
+RxData (dec): 248 248 255 248 248 255 255 248 
+01100100
+RxData (dec): 255 248 248 248 248 248 248 248 
+00000001
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0x00
+RxData (dec): 248 248 255 248 248 255 255 248 
+01100100
+RxData (dec): 255 248 248 248 248 248 248 248 
+00000001
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0x00
+RxData (dec): 248 248 255 248 248 255 255 248 
+01100100
+RxData (dec): 255 248 248 248 248 248 248 248 
+00000001
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0x00
+RxData (dec): 248 248 255 248 248 255 255 248 
+01100100
+RxData (dec): 255 248 248 248 248 248 248 248 
+00000001
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0x00
+RxData (dec): 255 248 255 248 248 255 255 248 
+01100101
+RxData (dec): 255 248 248 248 248 248 248 248 
+00000001
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0x00
+RxData (dec): 248 248 255 248 248 255 255 248 
+01100100
+RxData (dec): 255 248 248 248 248 248 248 248 
+00000001
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0x00
+RxData (dec): 248 248 255 248 248 255 255 248 
+01100100
+RxData (dec): 255 248 248 248 248 248 248 248 
+00000001
+Rx_Presence_pulse = 0xE0
+Rx_Presence_pulse = 0x00
+RxData (dec): 255 248 255 248 248 255 255 248 
+01100101
+RxData (dec): 255 248 248 248 248 248 248 248 
+00000001
