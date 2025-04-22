@@ -81,38 +81,22 @@ void MX_USB_HOST_Process(void);
 /* USER CODE BEGIN PFP */
 typedef enum {START_MEASURE, PRESENCE_PULSE_1, SKIPPING_ROM1, REQUESTING_CONVERSION, PRESENCE_PULSE_2, SKIPPING_ROM2, REQUEST_TEMP, RECEIVING_BYTE_LSB,  RECEIVING_BYTE_MSB, FINISHED}DS18B20_state_t;
 
-volatile bool flag_uart6_sent = 0, flag_uart6_received = 0;
+volatile bool flag_uart6_sent = 0;
 volatile bool flag_timer = 0;
 
-volatile int presence = 0, isRxed = 0;
+volatile int presence = 0;
 uint8_t RxData[8], RxData_LSB[8], RxData_MSB[8], Temp_LSB = 0, Temp_MSB = 0;
 int16_t Temp = 0;
 float Temperature_DS18B20 = 0;
 uint8_t Tx_PRESENCE_PULSE[] = {0xF0}, Rx_PRESENCE_PULSE[] = {0x00};
 uint8_t data_global = 0xF0;
 
+uint8_t FF_byte[] = {0xFF};
+uint8_t C0_byte[] = {0xC0};
+
+
 uint32_t delay = 0, conversion_delay = 0;
 DS18B20_state_t DS18B20_state = START_MEASURE, *DS18B20_state_ptr = &DS18B20_state;
-
-void Start_Timer(uint16_t microseconds) {
-    __HAL_TIM_SET_COUNTER(&htim4, 0);           // Reiniciar contador
-    __HAL_TIM_SET_AUTORELOAD(&htim4, microseconds); // Establecer nuevo tiempo
-    HAL_TIM_Base_Start_IT(&htim4);              // Iniciar Timer con interrupción
-}
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-    if (htim->Instance == TIM4) {
-        // Aquí ejecutas la acción después del tiempo deseado
-        HAL_TIM_Base_Stop_IT(&htim4);  // Detener el Timer para evitar repeticiones
-    }
-}
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-	isRxed = 1;
-	if(huart->Instance == USART6){
-		flag_uart6_received = 1;
-	}
-}
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
 	if(huart->Instance == USART6){
@@ -123,13 +107,6 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void print_bin(uint8_t byte) {
-    for (int i = 7; i >= 0; i--) {
-        printf("%d", (byte >> i) & 1);
-    }
-    printf("\n");
-}
-
 void MX_USART6_UART_Init_baud_selecting(uint32_t baud_rate)
 {
 	huart6.Instance = USART6;
@@ -156,36 +133,10 @@ void DS18B20_Write(uint8_t data){
 			buffer[i] = 0x00;
 		}
 	}
-	HAL_UART_Transmit(&huart6,buffer,8,1000);
-}
-
-void DS18B20_Write_noblock(uint8_t data){
-	uint8_t buffer[8];
-	for(int i = 0;i < 8;i++){
-		if((data & (1<<i)) != 0){
-			buffer[i] = 0xFF;
-		}
-		else{
-			buffer[i] = 0x00;
-		}
-	}
 	HAL_UART_Transmit_DMA(&huart6,buffer,8);
 }
 
-int DS18B20_Start(void){
-	uint8_t data = 0xF0;
-	MX_USART6_UART_Init_baud_selecting(9600);
-	HAL_UART_Transmit(&huart6,&data,1,100);
-	if(HAL_UART_Receive(&huart6,&data,1,1000) != HAL_OK) return -1;
-	printf("Rx_Presence_pulse = 0x%02X\n", data);
-	MX_USART6_UART_Init_baud_selecting(115200);
-	if(data == 0xF0){
-		return -2;
-	}
-	return 1;
-}
-
-void DS18B20_Start_noblock(void){
+void DS18B20_Start(void){
 	MX_USART6_UART_Init_baud_selecting(9600);
 	HAL_UART_Transmit_DMA(&huart6,Tx_PRESENCE_PULSE,1);
 	HAL_UART_Receive_DMA(&huart6,Rx_PRESENCE_PULSE,1);
@@ -198,39 +149,9 @@ bool DS18B20_Presence_Pulse_check(void){
 	return 1;
 }
 
-uint8_t DS18B20_Read(void){
-	uint8_t buffer[8];
-	uint8_t value = 0;
-	for(int i = 0;i < 8;i++){
-		buffer[i] = 0xFF;
-	}
-	HAL_UART_Transmit_DMA(&huart6,buffer,8);
-	HAL_UART_Receive_DMA(&huart6,RxData,8);
 
-	delay = HAL_GetTick();
-	while(isRxed == 0){
-		if((HAL_GetTick() - delay > 2500)){
-			delay = HAL_GetTick();
 
-			isRxed = 1;
-		}
-    };
-
-	printf("RxData (dec): ");
-	for(int i = 0;i < 8;i++){
-		printf("%d ", RxData[i]);
-		if(RxData[i] == 0xFF){
-			value |= 1<<i;
-		}
-	}
-	printf("\n");
-
-	print_bin(value);
-	isRxed = 0;
-	return value;
-}
-
-void DS18B20_Read_noblock(uint8_t *rx){
+void DS18B20_Read(uint8_t *rx){
 	uint8_t buffer[8];
 	for(int i = 0;i < 8;i++){
 		buffer[i] = 0xFF;
@@ -254,48 +175,35 @@ uint8_t byte_parser(uint8_t *data){
 void action(DS18B20_state_t state){
 	switch(state){
 		case PRESENCE_PULSE_1:
-			DS18B20_Start_noblock();
+			DS18B20_Start();
 			break;
 		case SKIPPING_ROM1:
 			MX_USART6_UART_Init_baud_selecting(115200);
-			DS18B20_Write_noblock(0xCC);
+			DS18B20_Write(0xCC);
 			break;
 		case REQUESTING_CONVERSION:
-			DS18B20_Write_noblock(0x44);
+			DS18B20_Write(0x44);
 			delay = HAL_GetTick();
 			break;
 		case PRESENCE_PULSE_2:
-			DS18B20_Start_noblock();
+			DS18B20_Start();
 			break;
 		case SKIPPING_ROM2:
 			MX_USART6_UART_Init_baud_selecting(115200);
-			DS18B20_Write_noblock(0xCC);
+			DS18B20_Write(0xCC);
 			break;
 		case REQUEST_TEMP:
-			DS18B20_Write_noblock(0xBE);
+			DS18B20_Write(0xBE);
 			break;
 		case RECEIVING_BYTE_LSB:
-			DS18B20_Read_noblock(RxData_LSB);
+			DS18B20_Read(RxData_LSB);
 			break;
 		case RECEIVING_BYTE_MSB:
-			DS18B20_Read_noblock(RxData_MSB);
+			DS18B20_Read(RxData_MSB);
 			break;
 		case FINISHED:
 			Temp_LSB = byte_parser(RxData_LSB);
-			printf("RxData_LSB (dec): ");
-			for (int i = 0; i < 8; i++) {
-				printf("%d ", RxData_LSB[i]);
-			}
-			printf("\n");
-			print_bin(Temp_LSB);
-
 			Temp_MSB = byte_parser(RxData_MSB);
-			printf("RxData_MSB (dec): ");
-			for (int i = 0; i < 8; i++) {
-				printf("%d ", RxData_MSB[i]);
-			}
-			printf("\n");
-			print_bin(Temp_MSB);
 
 			Temp = (Temp_MSB << 8) | Temp_LSB;
 			Temperature_DS18B20 = (float) Temp/16.0;
@@ -317,7 +225,6 @@ bool DS18B20_state_handling(DS18B20_state_t *state){
 				if(DS18B20_Presence_Pulse_check()){
 					*state = SKIPPING_ROM1;
 				}
-				printf("Rx_Presence_pulse = 0x%02X\n", Rx_PRESENCE_PULSE[0]);
 				flag_uart6_sent = 0;
 				return 1;
 			}
@@ -345,7 +252,6 @@ bool DS18B20_state_handling(DS18B20_state_t *state){
 				if(DS18B20_Presence_Pulse_check()){
 					*state = SKIPPING_ROM2;
 				}
-				printf("Rx_Presence_pulse = 0x%02X\n", Rx_PRESENCE_PULSE[0]);
 				flag_uart6_sent = 0;
 				return 1;
 			}
@@ -435,7 +341,7 @@ int main(void)
   MX_USART6_UART_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-
+  MX_USART6_UART_Init_baud_selecting(115200);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -451,22 +357,6 @@ int main(void)
     		action(DS18B20_state);
     	}
     }
-
-    /*
-    presence = DS18B20_Start();
-    DS18B20_Write(0xCC);
-    DS18B20_Write(0x44);
-
-    presence = DS18B20_Start();
-    DS18B20_Write(0xCC);
-    DS18B20_Write(0xBE);
-
-    Temp_LSB = DS18B20_Read();
-    Temp_MSB = DS18B20_Read();
-
-    Temp = (Temp_MSB<<8) | Temp_LSB;
-    Temperature_DS18B20 = (float) Temp/16.0;
-    HAL_Delay(2000);*/
   }
   /* USER CODE END 3 */
 }
